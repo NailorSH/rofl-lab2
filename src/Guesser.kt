@@ -1,10 +1,14 @@
-import java.io.BufferedWriter
+import org.apache.poi.xssf.usermodel.XSSFWorkbook
 import java.io.BufferedReader
+import java.io.BufferedWriter
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import java.lang.ProcessBuilder
 
 const val PYTHON_PATH = "../venv/bin/python3"
+const val EXPORTED_TABLE_PATH = "./result.xlsx"
 
 class Guesser(
     private val alphabet: List<String>, // алфавит
@@ -31,7 +35,7 @@ class Guesser(
         return reader.readLine().trim() == "True"
     }
 
-    fun isEquivalence(): Pair<Boolean, String?> {
+    fun isEquivalent(): Pair<Boolean, String?> {
         val suffRow = E.joinToString(" ") { if (it.isEmpty()) "e" else it }
         writer.run {
             write("equal\n")
@@ -74,22 +78,7 @@ class Guesser(
         }
     }
 
-    fun buildHypothesis(): Map<String, Any> {
-        val states = S.withIndex().associate { it.value to it.index }
-        val transitions = mutableMapOf<Pair<Int, String>, Int>()
-        S.forEach { s ->
-            alphabet.forEach { a ->
-                val nextState = s + a
-                if (nextState in S) {
-                    transitions[states[s]!! to a] = states[nextState]!!
-                }
-            }
-        }
-        val acceptStates = S.filter { table[it to ""] == true }.toSet()
-        return mapOf("states" to states.values.toSet(), "transitions" to transitions, "accept_states" to acceptStates)
-    }
-
-    fun formatTable() {
+    fun printTable() {
         val suffRow = E.joinToString("\t") { if (it == "") "e" else it }
         val readableTable = StringBuilder("\t$suffRow\n")
         S.forEach { s ->
@@ -100,16 +89,34 @@ class Guesser(
         println(readableTable.toString())
     }
 
+    fun exportToExcel(filePath: String) {
+        XSSFWorkbook().use { workbook ->
+            val sheet = workbook.createSheet("Equivalence Table")
+            sheet.createRow(0).apply {
+                createCell(0).setCellValue("Prefixes \\ Suffixes")
+                E.forEachIndexed { index, e -> createCell(index + 1).setCellValue(e.ifEmpty { "e" }) }
+            }
+            S.forEachIndexed { rowIndex, s ->
+                val row = sheet.createRow(rowIndex + 1)
+                row.createCell(0).setCellValue(s.ifEmpty { "e" })
+                E.forEachIndexed { colIndex, e -> row.createCell(colIndex + 1).setCellValue(if (table[s to e] == true) "1" else "0") }
+            }
+            FileOutputStream(File(filePath)).use { workbook.write(it) }
+            println("Таблица успешно сохранена в $filePath")
+        }
+    }
+
     fun run() {
         while (true) {
             closeTable()
-            val (equivalent, counterexample) = isEquivalence()
+            val (equivalent, counterexample) = isEquivalent()
             if (equivalent) {
                 println("Гипотеза верна! Автомат построен.")
-                formatTable()
+                printTable()
+                exportToExcel(EXPORTED_TABLE_PATH)
                 break
             } else {
-                println("Получен контрпример: $counterexample")
+                println("Контрпример от МАТ-а: $counterexample")
                 counterexample?.let {
                     for (i in 1..it.length) {
                         val prefix = it.substring(0, i)
@@ -129,5 +136,3 @@ class Guesser(
         matProcess.destroy()
     }
 }
-
-

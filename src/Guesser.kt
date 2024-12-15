@@ -55,6 +55,7 @@ class Guesser(
         }
     }
 
+    // обновляет таблицу классов эквивалентности
     fun updateTable() {
         S.forEach { s ->
             E.forEach { e ->
@@ -63,6 +64,7 @@ class Guesser(
         }
     }
 
+    // расширяет множество префиксов S
     fun closeTable() {
         while (true) {
             S.forEach { s ->
@@ -80,7 +82,9 @@ class Guesser(
 
     fun run() {
         while (true) {
+            // заполняем таблицу первоначальными суффиксами и префиксами
             closeTable()
+
             val (equivalent, counterexample) = isEquivalent()
             if (equivalent) {
                 println("Гипотеза верна! Автомат построен.")

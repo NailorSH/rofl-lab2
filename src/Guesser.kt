@@ -78,6 +78,32 @@ class Guesser(
         }
     }
 
+    fun run() {
+        while (true) {
+            closeTable()
+            val (equivalent, counterexample) = isEquivalent()
+            if (equivalent) {
+                println("Гипотеза верна! Автомат построен.")
+                printTable()
+                exportToExcel(EXPORTED_TABLE_PATH)
+                break
+            } else {
+                println("Контрпример от МАТ-а: $counterexample")
+                counterexample?.let {
+                    for (i in 1..it.length) {
+                        val prefix = it.substring(0, i)
+                        if (prefix !in S) S.add(prefix)
+                    }
+                    for (i in it.indices) {
+                        val suffix = it.substring(i)
+                        if (suffix !in E) E.add(suffix)
+                    }
+                    updateTable()
+                }
+            }
+        }
+    }
+
     fun printTable() {
         val suffRow = E.joinToString("\t") { if (it == "") "e" else it }
         val readableTable = StringBuilder("\t$suffRow\n")
@@ -103,32 +129,6 @@ class Guesser(
             }
             FileOutputStream(File(filePath)).use { workbook.write(it) }
             println("Таблица успешно сохранена в $filePath")
-        }
-    }
-
-    fun run() {
-        while (true) {
-            closeTable()
-            val (equivalent, counterexample) = isEquivalent()
-            if (equivalent) {
-                println("Гипотеза верна! Автомат построен.")
-                printTable()
-                exportToExcel(EXPORTED_TABLE_PATH)
-                break
-            } else {
-                println("Контрпример от МАТ-а: $counterexample")
-                counterexample?.let {
-                    for (i in 1..it.length) {
-                        val prefix = it.substring(0, i)
-                        if (prefix !in S) S.add(prefix)
-                    }
-                    for (i in it.indices) {
-                        val suffix = it.substring(i)
-                        if (suffix !in E) E.add(suffix)
-                    }
-                    updateTable()
-                }
-            }
         }
     }
 
